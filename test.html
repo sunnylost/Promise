@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charse3t="utf-8">
+	<title></title>
+</head>
+<body>
+	<script type="text/javascript" src="promise.js"></script>
+	<script type="text/javascript">
+		var promise = new myPromise(function(resolve, reject) {
+			setTimeout(function() {
+				resolve('haha');
+			}, 2000)
+		});
+
+		promise.then(function(msg) {
+			console.log('The result is:' + msg);
+		}).then(function(msg) {
+			console.log('Ha, I\'m another resolve handler! The msg is:' + msg);
+		})
+	</script>
+</body>
+</html>
