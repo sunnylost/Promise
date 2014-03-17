@@ -15,6 +15,7 @@
 
 		promise.then(function(msg) {
 			console.log('The result is:' + msg);
+			return '123';
 		}).then(function(msg) {
 			console.log('Ha, I\'m another resolve handler! The msg is:' + msg);
 		})

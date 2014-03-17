@@ -19,32 +19,38 @@
 		throw new Error();
 	}
 
-	function resolveFn(x) {
+	function resolveFn(reason) {
 		var status = this.status;
 		if(status !== UNRESOLVED) return undefined;
 
 		var reactions = this.resolveReactions;
 		this.resolveReactions = undefined;
 		this.status = HAS_RESOLUTION;
-		TriggerPromiseReactions(reactions, x);
+		this.PromiseResult = reason;
+
+		TriggerPromiseReactions.call(this, reactions, reason);
 	}
 
-	function rejectFn(x) {
+	function rejectFn(reason) {
 		var status = this.status;
 		if(status !== UNRESOLVED) return undefined;
 
 		var reactions = this.rejectReactions;
 		this.rejectReactions = undefined;
 		this.status = HAS_REJECTION;
-		TriggerPromiseReactions(reactions, x);
+		this.PromiseResult = reason;
+
+		TriggerPromiseReactions.call(this, reactions, reason);
 	}
 
-	function TriggerPromiseReactions(reactions, x) {
+	function TriggerPromiseReactions(reactions, reason) {
 		var i = 0,
-			len = reactions.length;
+			len = reactions.length,
+			result;
 
 		for(; i < len; i++) {
-			reactions[i].call(null, x);
+			result = reactions[i].call(null, reason);
+			typeof result != 'undefined' && (this.PromiseResult = reason = result);
 		}
 	}
 
@@ -68,7 +74,8 @@
 		},
 
 		then: function(onFulfilled, onRejected) {
-			var status = this.status;
+			var status = this.status,
+				reason = this.PromiseResult;
 			isFunction(onFulfilled) || (onFulfilled = identity);
 			isFunction(onRejected)  || (onRejected  = thrower);
 
@@ -76,9 +83,9 @@
 				this.resolveReactions.push(onFulfilled);
 				this.rejectReactions.push(onRejected);
 			} else if(status === HAS_RESOLUTION) {
-				onFulfilled.call(null);
+				TriggerPromiseReactions.call(this, [onFulfilled], reason);
 			} else {
-				onRejected.call(null);
+				TriggerPromiseReactions.call(this, [onRejected], reason);
 			}
 			return this;
 		}
