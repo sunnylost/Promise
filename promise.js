@@ -21,8 +21,8 @@
 	/**
 	 * reject 函数的默认值
 	 */
-	function thrower() {
-		throw new Error();
+	function thrower(e) {
+		throw new Error(e);
 	}
 
 	function IsPromise(promise) {
@@ -36,7 +36,7 @@
 		var reactions = this.resolveReactions;
 		this.resolveReactions = undefined;
 		this.status = HAS_RESOLUTION;
-		this.PromiseResult = reason;
+		this.__PromiseResult__ = reason;
 
 		TriggerPromiseReactions.call(this, reactions, reason);
 	}
@@ -48,7 +48,7 @@
 		var reactions = this.rejectReactions;
 		this.rejectReactions = undefined;
 		this.status = HAS_REJECTION;
-		this.PromiseResult = reason;
+		this.__PromiseResult__ = reason;
 
 		TriggerPromiseReactions.call(this, reactions, reason);
 	}
@@ -67,7 +67,7 @@
 					result.rejectReactions  = this.rejectReactions  || reactions;
 					return result;
 				}
-				this.PromiseResult = reason = result;
+				this.__PromiseResult__ = reason = result;
 			}
 		}
 	}
@@ -96,7 +96,7 @@
 
 		then: function(onFulfilled, onRejected) {
 			var status = this.status,
-				reason = this.PromiseResult;
+				reason = this.__PromiseResult__;
 			isFunction(onFulfilled) || (onFulfilled = identity);
 			isFunction(onRejected)  || (onRejected  = thrower);
 
