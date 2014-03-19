@@ -112,5 +112,24 @@
 		}
 	};
 
+	Promise.all = function(arr) {
+		return new Promise(function(resolve, reject) {
+			var i 	  = 0,
+				len   = arr.length,
+				count = len;
+
+			for(; i < len; i++) {
+				arr[i].call(null).then(function() {
+					count--;
+					if(!count) {
+						resolve();
+					}
+				}, function(e) {
+					reject();
+				})
+			}
+		});
+	};
+
 	window.myPromise = Promise;
 }())

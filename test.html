@@ -13,11 +13,44 @@
 			}, 2000)
 		});
 
-		promise.then(function(msg) {
+		/*promise.then(function(msg) {
 			console.log('The result is:' + msg);
 			return '123';
 		}).then(function(msg) {
 			console.log('Ha, I\'m another resolve handler! The msg is:' + msg);
+		})*/
+
+		function f1() {
+			return new myPromise(function(resolve, reject) {
+				setTimeout(function() {
+					resolve();
+				}, 1000)
+			})
+		}
+
+		function f2() {
+			return new myPromise(function(resolve, reject) {
+				setTimeout(function() {
+					reject(Error(('AAA')));
+				}, 5000)
+			})
+		}
+
+		function f3() {
+			return new myPromise(function(resolve, reject) {
+				setTimeout(function() {
+					resolve();
+					console.log("hola datevid");
+				}, 3000)
+			})
+		}
+
+		var start = Date.now();
+
+		myPromise.all([f1, f2, f3]).then(function() {
+			console.log('All done! It costs ' + (Date.now() - start) / 1000 + 'ms');
+		}, function() {
+			console.log("Something is wrong!");
 		})
 	</script>
 </body>
