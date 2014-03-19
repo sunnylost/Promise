@@ -21,7 +21,7 @@
 		})*/
 
 		function f1() {
-			return new myPromise(function(resolve, reject) {
+			return new Promise(function(resolve, reject) {
 				setTimeout(function() {
 					resolve();
 				}, 1000)
@@ -29,7 +29,7 @@
 		}
 
 		function f2() {
-			return new myPromise(function(resolve, reject) {
+			return new Promise(function(resolve, reject) {
 				setTimeout(function() {
 					reject(Error(('AAA')));
 				}, 5000)
@@ -37,7 +37,7 @@
 		}
 
 		function f3() {
-			return new myPromise(function(resolve, reject) {
+			return new Promise(function(resolve, reject) {
 				setTimeout(function() {
 					resolve();
 					console.log("hola datevid");
@@ -45,13 +45,24 @@
 			})
 		}
 
-		var start = Date.now();
+		/*var start = Date.now();
 
-		myPromise.all([f1, f2, f3]).then(function() {
+		Promise.all([f1, f2, f3]).then(function() {
 			console.log('All done! It costs ' + (Date.now() - start) / 1000 + 'ms');
 		}, function() {
 			console.log("Something is wrong!");
+		})*/
+		var d = Deferred();
+
+		d.then(function(msg) {
+			console.log('Resolved! The msg is ' + msg);
+		}, function() {
+			console.log('Rejected!');
 		})
+
+		setTimeout(function() {
+			d.resolve('hello, world!');
+		}, 3000)
 	</script>
 </body>
 </html>

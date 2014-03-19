@@ -78,10 +78,10 @@
 		this.resolveReactions = [];
 		this.rejectReactions  = [];
 
-		var resolve = resolveFn.bind(this),
-			reject  = rejectFn.bind(this);
+		this.resolve = resolveFn.bind(this);
+		this.reject  = rejectFn.bind(this);
 
-		executor.call(null, resolve, reject);
+		executor.call(null, this.resolve, this.reject);
 	}
 
 	Promise.prototype = {
@@ -132,4 +132,7 @@
 	};
 
 	window.myPromise = Promise;
+	window.Deferred  = function() {
+		return new Promise(function() {});
+	};
 }())
