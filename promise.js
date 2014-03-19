@@ -85,7 +85,7 @@
 	}
 
 	Promise.prototype = {
-		coonstructor: Promise,
+		constructor: Promise,
 
 		/**
 		 * http://people.mozilla.org/~jorendorff/es6-draft.html#sec-promise.prototype.catch
