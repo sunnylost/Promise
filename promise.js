@@ -131,6 +131,21 @@
 		});
 	};
 
+	Promise.race = function(arr) {
+		return new Promise(function(resolve, reject) {
+			var i 	  = 0,
+				len   = arr.length;
+
+			for(; i < len; i++) {
+				arr[i].call(null).then(function() {
+					resolve();
+				}, function(e) {
+					reject();
+				})
+			}
+		});
+	};
+
 	window.myPromise = Promise;
 	window.Deferred  = function() {
 		return new Promise(function() {});

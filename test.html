@@ -7,7 +7,9 @@
 <body>
 	<script type="text/javascript" src="promise.js"></script>
 	<script type="text/javascript">
-		var promise = new myPromise(function(resolve, reject) {
+		Promise = myPromise;
+
+		var promise = new Promise(function(resolve, reject) {
 			setTimeout(function() {
 				resolve('haha');
 			}, 2000)
@@ -23,6 +25,7 @@
 		function f1() {
 			return new Promise(function(resolve, reject) {
 				setTimeout(function() {
+					console.log('f1 is finished!');
 					resolve();
 				}, 1000)
 			})
@@ -45,14 +48,15 @@
 			})
 		}
 
-		/*var start = Date.now();
+		var start = Date.now();
 
+		/*
 		Promise.all([f1, f2, f3]).then(function() {
 			console.log('All done! It costs ' + (Date.now() - start) / 1000 + 'ms');
 		}, function() {
 			console.log("Something is wrong!");
 		})*/
-		var d = Deferred();
+		/*var d = Deferred();
 
 		d.then(function(msg) {
 			console.log('Resolved! The msg is ' + msg);
@@ -62,7 +66,13 @@
 
 		setTimeout(function() {
 			d.resolve('hello, world!');
-		}, 3000)
+		}, 3000)*/
+
+		Promise.race([f1, f2, f3]).then(function() {
+			console.log('All done! It costs ' + (Date.now() - start) / 1000 + 'ms');
+		}, function() {
+			console.log("Something is wrong!");
+		})
 	</script>
 </body>
 </html>
