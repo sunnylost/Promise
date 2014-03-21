@@ -68,11 +68,40 @@
 			d.resolve('hello, world!');
 		}, 3000)*/
 
-		Promise.race([f1, f2, f3]).then(function() {
+		/*Promise.race([f1, f2, f3]).then(function() {
 			console.log('All done! It costs ' + (Date.now() - start) / 1000 + 'ms');
 		}, function() {
 			console.log("Something is wrong!");
-		})
+		})*/
+
+		var d = Deferred();
+
+		d.then(function () {
+		    alert(1);
+		    return d.then(function () {
+		        alert(2);
+		    }).
+		    then(function () {
+		        alert(3);
+		    });
+		}).
+		then(function () {
+		   alert(4);
+		   return d.then(function() {
+		   		alert(5);
+		   		return d.then(function() {
+		   			alert(6)
+		   		})
+		   })
+		}).
+		then(function() {
+			alert(7)
+		});
+
+		setTimeout(function() {
+			d.resolve();
+		}, 2000)
+
 	</script>
 </body>
 </html>

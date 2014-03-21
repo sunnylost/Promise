@@ -56,15 +56,23 @@
 	function TriggerPromiseReactions(reactions, reason) {
 		var len = reactions.length,
 			reaction,
-			result;
+			result,
+			resolveReactions,
+			rejectReactions,
+			i,
+			max;
 
 		while(len--) {
 			reaction = reactions.shift();
 			result = reaction.call(null, reason);
 			if(typeof result != 'undefined') {
 				if(IsPromise(result)) {
-					result.resolveReactions = this.resolveReactions || reactions;
-					result.rejectReactions  = this.rejectReactions  || reactions;
+					resolveReactions = this.resolveReactions || reactions || [];
+					rejectReactions  = this.rejectReactions  || reactions || [];
+					max = Math.max(resolveReactions.length, rejectReactions.length);
+					for(i = 0; i < max; i++) {
+						result.then(resolveReactions[i], rejectReactions[i]);
+					}
 					return result;
 				}
 				this.__PromiseResult__ = reason = result;
