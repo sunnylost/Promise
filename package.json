@@ -1,7 +1,7 @@
 {
   "name": "Promise",
   "version": "1.0.0",
-  "description": "Promise =======",
+  "description": "Promise",
   "main": "promise.js",
   "scripts": {
     "test": "mocha ./test",

@@ -2,160 +2,171 @@
  * Promise Object
  * http://people.mozilla.org/~jorendorff/es6-draft.html#sec-promise-objects
  */
-(function() {
-	var UNRESOLVED = 'unresolved',
-		HAS_RESOLUTION = 'has-resolution',
-		HAS_REJECTION  = 'has-rejection';
+(function ( root, factory ) {
+        if ( typeof define === 'function' && define.amd ) {
+            // AMD
+            define( [ 'jquery' ], factory )
+        } else if ( typeof exports === 'object' ) {
+            // Node, CommonJS-like
+            module.exports = factory()
+        } else {
+            // Browser globals (root is window)
+            root.returnExports = factory()
+        }
+    }( this, function () {
+        var UNRESOLVED = 'unresolved',
+            HAS_RESOLUTION = 'has-resolution',
+            HAS_REJECTION = 'has-rejection'
 
-	function isFunction(fn) {
-		return typeof fn === 'function';
-	}
+        function isFunction( fn ) {
+            return typeof fn === 'function'
+        }
 
-	/**
-	 * resolve 函数的默认值
-	 */
-	function identity(x) {
-		return x;
-	}
+        /**
+         * resolve 函数的默认值
+         */
+        function identity( x ) {
+            return x
+        }
 
-	/**
-	 * reject 函数的默认值
-	 */
-	function thrower(e) {
-		throw new Error(e);
-	}
+        /**
+         * reject 函数的默认值
+         */
+        function thrower( e ) {
+            throw new Error( e )
+        }
 
-	function IsPromise(promise) {
-		return promise instanceof Promise;
-	}
+        function IsPromise( promise ) {
+            return promise instanceof Promise
+        }
 
-	function resolveFn(reason) {
-		var status = this.status;
-		if(status !== UNRESOLVED) return undefined;
+        function resolveFn( reason ) {
+            var status = this.status
+            if ( status !== UNRESOLVED ) return undefined
 
-		var reactions = this.resolveReactions;
-		this.resolveReactions = undefined;
-		this.status = HAS_RESOLUTION;
-		this.__PromiseResult__ = reason;
+            var reactions = this.resolveReactions
+            this.resolveReactions = undefined
+            this.status = HAS_RESOLUTION
+            this.__PromiseResult__ = reason
 
-		TriggerPromiseReactions.call(this, reactions, reason);
-	}
+            TriggerPromiseReactions.call( this, reactions, reason )
+        }
 
-	function rejectFn(reason) {
-		var status = this.status;
-		if(status !== UNRESOLVED) return undefined;
+        function rejectFn( reason ) {
+            var status = this.status
+            if ( status !== UNRESOLVED ) return undefined
 
-		var reactions = this.rejectReactions;
-		this.rejectReactions = undefined;
-		this.status = HAS_REJECTION;
-		this.__PromiseResult__ = reason;
+            var reactions = this.rejectReactions
+            this.rejectReactions = undefined
+            this.status = HAS_REJECTION
+            this.__PromiseResult__ = reason
 
-		TriggerPromiseReactions.call(this, reactions, reason);
-	}
+            TriggerPromiseReactions.call( this, reactions, reason )
+        }
 
-	function TriggerPromiseReactions(reactions, reason) {
-		var len = reactions.length,
-			reaction,
-			result,
-			resolveReactions,
-			rejectReactions,
-			i,
-			max;
+        function TriggerPromiseReactions( reactions, reason ) {
+            var len = reactions.length,
+                reaction,
+                result,
+                resolveReactions,
+                rejectReactions,
+                i,
+                max
 
-		while(len--) {
-			reaction = reactions.shift();
-			result = reaction.call(null, reason);
-			if(typeof result != 'undefined') {
-				if(IsPromise(result)) {
-					resolveReactions = this.resolveReactions || reactions || [];
-					rejectReactions  = this.rejectReactions  || reactions || [];
-					max = Math.max(resolveReactions.length, rejectReactions.length);
-					for(i = 0; i < max; i++) {
-						result.then(resolveReactions[i], rejectReactions[i]);
-					}
-					return result;
-				}
-				this.__PromiseResult__ = reason = result;
-			}
-		}
-	}
+            while ( len-- ) {
+                reaction = reactions.shift()
+                result = reaction.call( null, reason )
+                if ( typeof result != 'undefined' ) {
+                    if ( IsPromise( result ) ) {
+                        resolveReactions = this.resolveReactions || reactions || []
+                        rejectReactions = this.rejectReactions || reactions || []
+                        max = Math.max( resolveReactions.length, rejectReactions.length )
+                        for ( i = 0; i < max; i++ ) {
+                            result.then( resolveReactions[ i ], rejectReactions[ i ] )
+                        }
+                        return result
+                    }
+                    this.__PromiseResult__ = reason = result
+                }
+            }
+        }
 
-	function Promise(executor) {
-		if(!isFunction(executor)) throw new TypeError('Promise constructor takes a function argument.');
-		this.status = UNRESOLVED;
-		this.resolveReactions = [];
-		this.rejectReactions  = [];
+        function Promise( executor ) {
+            if ( !isFunction( executor ) ) throw new TypeError( 'Promise constructor takes a function argument.' )
+            this.status = UNRESOLVED
+            this.resolveReactions = []
+            this.rejectReactions = []
 
-		this.resolve = resolveFn.bind(this);
-		this.reject  = rejectFn.bind(this);
+            this.resolve = resolveFn.bind( this )
+            this.reject = rejectFn.bind( this )
 
-		executor.call(null, this.resolve, this.reject);
-	}
+            executor.call( null, this.resolve, this.reject )
+        }
 
-	Promise.prototype = {
-		constructor: Promise,
+        Promise.prototype = {
+            constructor: Promise,
 
-		/**
-		 * http://people.mozilla.org/~jorendorff/es6-draft.html#sec-promise.prototype.catch
-		 */
-		catch: function(onRejected) {
-			return this.then(undefined, onRejected);
-		},
+            /**
+             * http://people.mozilla.org/~jorendorff/es6-draft.html#sec-promise.prototype.catch
+             */
+            catch: function ( onRejected ) {
+                return this.then( undefined, onRejected )
+            },
 
-		then: function(onFulfilled, onRejected) {
-			var status = this.status,
-				reason = this.__PromiseResult__;
-			isFunction(onFulfilled) || (onFulfilled = identity);
-			isFunction(onRejected)  || (onRejected  = thrower);
+            then: function ( onFulfilled, onRejected ) {
+                var status = this.status,
+                    reason = this.__PromiseResult__
 
-			if(status === UNRESOLVED) {
-				this.resolveReactions.push(onFulfilled);
-				this.rejectReactions.push(onRejected);
-			} else if(status === HAS_RESOLUTION) {
-				TriggerPromiseReactions.call(this, [onFulfilled], reason);
-			} else {
-				TriggerPromiseReactions.call(this, [onRejected], reason);
-			}
-			return this;
-		}
-	};
+                isFunction( onFulfilled ) || ( onFulfilled = identity )
+                isFunction( onRejected ) || ( onRejected = thrower )
 
-	Promise.all = function(arr) {
-		return new Promise(function(resolve, reject) {
-			var i 	  = 0,
-				len   = arr.length,
-				count = len;
+                if ( status === UNRESOLVED ) {
+                    this.resolveReactions.push( onFulfilled )
+                    this.rejectReactions.push( onRejected )
+                } else if ( status === HAS_RESOLUTION ) {
+                    TriggerPromiseReactions.call( this, [ onFulfilled ], reason )
+                } else {
+                    TriggerPromiseReactions.call( this, [ onRejected ], reason )
+                }
+                return this
+            }
+        }
 
-			for(; i < len; i++) {
-				arr[i].call(null).then(function() {
-					count--;
-					if(!count) {
-						resolve();
-					}
-				}, function(e) {
-					reject();
-				})
-			}
-		});
-	};
+        Promise.all = function ( arr ) {
+            return new Promise( function ( resolve, reject ) {
+                var i = 0,
+                    len = arr.length,
+                    count = len
 
-	Promise.race = function(arr) {
-		return new Promise(function(resolve, reject) {
-			var i 	  = 0,
-				len   = arr.length;
+                for ( ; i < len; i++ ) {
+                    arr[ i ].call( null ).then( function () {
+                        count--
+                        if ( !count ) {
+                            resolve()
+                        }
+                    }, function ( e ) {
+                        reject()
+                    } )
+                }
+            } )
+        }
 
-			for(; i < len; i++) {
-				arr[i].call(null).then(function() {
-					resolve();
-				}, function(e) {
-					reject();
-				})
-			}
-		});
-	};
+        Promise.race = function ( arr ) {
+            return new Promise( function ( resolve, reject ) {
+                var i = 0,
+                    len = arr.length
 
-	window.myPromise = Promise;
-	window.Deferred  = function() {
-		return new Promise(function() {});
-	};
-}())
+                for ( ; i < len; i++ ) {
+                    arr[ i ].call( null ).then( function () {
+                        resolve()
+
+                    }, function () {
+                        reject()
+                    } )
+                }
+            } )
+        }
+
+        return Promise
+    } )
+)
