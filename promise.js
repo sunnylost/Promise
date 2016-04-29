@@ -5,18 +5,43 @@
 (function ( root, factory ) {
         if ( typeof define === 'function' && define.amd ) {
             // AMD
-            define( [ 'jquery' ], factory )
+            define( [ 'Promise' ], factory )
         } else if ( typeof exports === 'object' ) {
             // Node, CommonJS-like
             module.exports = factory()
         } else {
             // Browser globals (root is window)
-            root.returnExports = factory()
+            root.Promise = factory()
         }
     }( this, function () {
-        var UNRESOLVED = 'unresolved',
+        var UNRESOLVED     = 'unresolved',
             HAS_RESOLUTION = 'has-resolution',
-            HAS_REJECTION = 'has-rejection'
+            HAS_REJECTION  = 'has-rejection',
+
+            asyncWorker    = function () {
+                function fnWrapper( handler ) {
+                    return function ( fn ) {
+                        var args = [].splice.call( arguments, 0 ).splice( 1 )
+                        handler( function () {
+                            fn.apply( null, args )
+                        } )
+                    }
+                }
+
+                if ( typeof process != 'undefined' && process.nextTick ) {
+                    return fnWrapper( function ( handler ) {
+                        process.nextTick( handler )
+                    } )
+                } else if ( typeof setImmediate != 'undefined' ) {
+                    return fnWrapper( function ( handler ) {
+                        setImmediate( handler )
+                    } )
+                } else {
+                    return fnWrapper( function ( handler ) {
+                        setTimeout( handler, 0 )
+                    } )
+                }
+            }()
 
         function isFunction( fn ) {
             return typeof fn === 'function'
@@ -44,24 +69,24 @@
             var status = this.status
             if ( status !== UNRESOLVED ) return undefined
 
-            var reactions = this.resolveReactions
-            this.resolveReactions = undefined
-            this.status = HAS_RESOLUTION
+            var reactions          = this.resolveReactions
+            this.resolveReactions  = undefined
+            this.status            = HAS_RESOLUTION
             this.__PromiseResult__ = reason
 
-            TriggerPromiseReactions.call( this, reactions, reason )
+            asyncWorker( TriggerPromiseReactions.bind( this ), reactions, reason )
         }
 
         function rejectFn( reason ) {
             var status = this.status
             if ( status !== UNRESOLVED ) return undefined
 
-            var reactions = this.rejectReactions
-            this.rejectReactions = undefined
-            this.status = HAS_REJECTION
+            var reactions          = this.rejectReactions
+            this.rejectReactions   = undefined
+            this.status            = HAS_REJECTION
             this.__PromiseResult__ = reason
 
-            TriggerPromiseReactions.call( this, reactions, reason )
+            asyncWorker( TriggerPromiseReactions.bind( this ), reactions, reason )
         }
 
         function TriggerPromiseReactions( reactions, reason ) {
@@ -75,12 +100,12 @@
 
             while ( len-- ) {
                 reaction = reactions.shift()
-                result = reaction.call( null, reason )
+                result   = reaction.call( null, reason )
                 if ( typeof result != 'undefined' ) {
                     if ( IsPromise( result ) ) {
                         resolveReactions = this.resolveReactions || reactions || []
-                        rejectReactions = this.rejectReactions || reactions || []
-                        max = Math.max( resolveReactions.length, rejectReactions.length )
+                        rejectReactions  = this.rejectReactions || reactions || []
+                        max              = Math.max( resolveReactions.length, rejectReactions.length )
                         for ( i = 0; i < max; i++ ) {
                             result.then( resolveReactions[ i ], rejectReactions[ i ] )
                         }
@@ -93,12 +118,12 @@
 
         function Promise( executor ) {
             if ( !isFunction( executor ) ) throw new TypeError( 'Promise constructor takes a function argument.' )
-            this.status = UNRESOLVED
+            this.status           = UNRESOLVED
             this.resolveReactions = []
-            this.rejectReactions = []
+            this.rejectReactions  = []
 
             this.resolve = resolveFn.bind( this )
-            this.reject = rejectFn.bind( this )
+            this.reject  = rejectFn.bind( this )
 
             executor.call( null, this.resolve, this.reject )
         }
@@ -124,9 +149,9 @@
                     this.resolveReactions.push( onFulfilled )
                     this.rejectReactions.push( onRejected )
                 } else if ( status === HAS_RESOLUTION ) {
-                    TriggerPromiseReactions.call( this, [ onFulfilled ], reason )
+                    asyncWorker( TriggerPromiseReactions.bind( this ), [ onFulfilled ], reason )
                 } else {
-                    TriggerPromiseReactions.call( this, [ onRejected ], reason )
+                    asyncWorker( TriggerPromiseReactions.bind( this ), [ onRejected ], reason )
                 }
                 return this
             }
@@ -134,8 +159,8 @@
 
         Promise.all = function ( arr ) {
             return new Promise( function ( resolve, reject ) {
-                var i = 0,
-                    len = arr.length,
+                var i     = 0,
+                    len   = arr.length,
                     count = len
 
                 for ( ; i < len; i++ ) {
@@ -153,7 +178,7 @@
 
         Promise.race = function ( arr ) {
             return new Promise( function ( resolve, reject ) {
-                var i = 0,
+                var i   = 0,
                     len = arr.length
 
                 for ( ; i < len; i++ ) {
