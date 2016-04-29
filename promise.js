@@ -18,6 +18,8 @@
             HAS_RESOLUTION = 'has-resolution',
             HAS_REJECTION  = 'has-rejection',
 
+            UNDEFINED      = void 0,
+
             asyncWorker    = function () {
                 function fnWrapper( handler ) {
                     return function ( fn ) {
@@ -67,10 +69,10 @@
 
         function resolveFn( reason ) {
             var status = this.status
-            if ( status !== UNRESOLVED ) return undefined
+            if ( status !== UNRESOLVED ) return UNDEFINED
 
             var reactions          = this.resolveReactions
-            this.resolveReactions  = undefined
+            this.resolveReactions  = UNDEFINED
             this.status            = HAS_RESOLUTION
             this.__PromiseResult__ = reason
 
@@ -79,10 +81,10 @@
 
         function rejectFn( reason ) {
             var status = this.status
-            if ( status !== UNRESOLVED ) return undefined
+            if ( status !== UNRESOLVED ) return UNDEFINED
 
             var reactions          = this.rejectReactions
-            this.rejectReactions   = undefined
+            this.rejectReactions   = UNDEFINED
             this.status            = HAS_REJECTION
             this.__PromiseResult__ = reason
 
@@ -135,7 +137,7 @@
              * http://people.mozilla.org/~jorendorff/es6-draft.html#sec-promise.prototype.catch
              */
             catch: function ( onRejected ) {
-                return this.then( undefined, onRejected )
+                return this.then( UNDEFINED, onRejected )
             },
 
             then: function ( onFulfilled, onRejected ) {
@@ -157,6 +159,20 @@
             }
         }
 
+        Promise.resolve = function () {
+            var args = [].splice.call( arguments, 0 )
+            return new Promise( function ( resolve ) {
+                resolve.apply( null, args )
+            } )
+        }
+
+        Promise.reject = function () {
+            var args = [].splice.call( arguments, 0 )
+            return new Promise( function ( _, reject ) {
+                reject.apply( null, args )
+            } )
+        }
+
         Promise.all = function ( arr ) {
             return new Promise( function ( resolve, reject ) {
                 var i     = 0,
@@ -169,9 +185,7 @@
                         if ( !count ) {
                             resolve()
                         }
-                    }, function ( e ) {
-                        reject()
-                    } )
+                    }, reject )
                 }
             } )
         }
@@ -185,9 +199,7 @@
                     arr[ i ].call( null ).then( function () {
                         resolve()
 
-                    }, function () {
-                        reject()
-                    } )
+                    }, reject )
                 }
             } )
         }
