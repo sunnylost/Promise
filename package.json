@@ -1,0 +1,26 @@
+{
+  "name": "Promise",
+  "version": "1.0.0",
+  "description": "Promise =======",
+  "main": "promise.js",
+  "scripts": {
+    "test": "mocha ./test",
+    "test-full": "promises-aplus-tests promise"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sunnylost/Promise.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/sunnylost/Promise/issues"
+  },
+  "homepage": "https://github.com/sunnylost/Promise#readme",
+  "devDependencies": {
+    "chai": "^3.5.0",
+    "mocha": "^2.4.5",
+    "promises-aplus-tests": "^2.1.1"
+  }
+}
