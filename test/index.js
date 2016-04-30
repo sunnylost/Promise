@@ -1,5 +1,6 @@
 var Promise       = require( '../promise' ),
-    maxTimeLength = 1000
+    maxTimeLength = 100,
+    STATIC_VALUE  = 'static-value'
 
 function fakeAsyncOperation( fn ) {
     setTimeout( () => {
@@ -9,17 +10,42 @@ function fakeAsyncOperation( fn ) {
 
 describe( 'Promise', () => {
     describe( 'basic', () => {
-        it( 'resolve', done => {
+        it( 'resolve without value', done => {
             new Promise( resolve => {
                 fakeAsyncOperation( resolve )
             } ).then( done )
         } )
 
-        it( 'reject', done => {
+        it( 'resolve with value', done => {
+            new Promise( resolve => {
+                fakeAsyncOperation( () => {
+                    resolve( STATIC_VALUE )
+                } )
+            } ).then( val => {
+                if ( val === STATIC_VALUE ) {
+                    done()
+                }
+            } )
+        } )
+
+        it( 'reject without value', done => {
             new Promise( ( resolve, reject ) => {
                 fakeAsyncOperation( reject )
             } ).then( () => {
             }, done )
+        } )
+
+        it( 'reject with value', done => {
+            new Promise( ( resolve, reject ) => {
+                fakeAsyncOperation( () => {
+                    reject( STATIC_VALUE )
+                } )
+            } ).then( () => {
+            }, val => {
+                if ( val === STATIC_VALUE ) {
+                    done()
+                }
+            } )
         } )
 
         it( 'Promise.resolve', done => {
@@ -33,10 +59,10 @@ describe( 'Promise', () => {
 
         it( 'catch error', done => {
             new Promise( () => {
-                fakeAsyncOperation( () => {
-                    throw Error( 'error' )
-                } )
-            } ).catch( done )
+                throw Error( 'error' )
+            } ).catch( function () {
+                done()
+            } )
         } )
 
         it( 'state cannot be changed once it was settled', done => {
@@ -52,6 +78,32 @@ describe( 'Promise', () => {
                     done()
                 }
             } )
+        } )
+    } )
+
+    describe( 'nest Promise', () => {
+        it( 'return a Promise in a then function', done => {
+            Promise.resolve( 'success' )
+                .then( () => {
+                    return Promise.reject( 'fail' )
+                } ).then( txt => {
+                    console.log( txt )
+                } )
+                .catch( txt => {
+                    if ( txt === 'fail' ) done()
+                } )
+        } )
+
+        it( 'throw a exception', done => {
+            Promise.resolve( 'success' )
+                .then( () => {
+                    throw new Error( 'error!' )
+                } ).then( txt => {
+                    console.log( txt )
+                } )
+                .catch( err => {
+                    err && done()
+                } )
         } )
     } )
 } )

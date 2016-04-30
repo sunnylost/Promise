@@ -1,6 +1,6 @@
 /**
- * Promise Object
- * http://people.mozilla.org/~jorendorff/es6-draft.html#sec-promise-objects
+ * Promises/A+
+ * https://promisesaplus.com/
  */
 (function ( root, factory ) {
         if ( typeof define === 'function' && define.amd ) {
@@ -18,34 +18,31 @@
             REJECTED    = 'rejected',
             PENDING     = 'pending',
             UNDEFINED   = void 0,
+            gid         = 0,
+            promises    = [],
 
-            asyncWorker = function () {
-                function fnWrapper( handler ) {
-                    return function ( fn ) {
-                        var args = [].splice.call( arguments, 0 ).splice( 1 )
-                        handler( function () {
-                            fn.apply( null, args )
-                        } )
-                    }
-                }
-
+            asyncRunner = function () {
                 if ( typeof process != 'undefined' && process.nextTick ) {
-                    return fnWrapper( function ( handler ) {
+                    return function ( handler ) {
                         process.nextTick( handler )
-                    } )
+                    }
                 } else if ( typeof setImmediate != 'undefined' ) {
-                    return fnWrapper( function ( handler ) {
+                    return function ( handler ) {
                         setImmediate( handler )
-                    } )
+                    }
                 } else {
-                    return fnWrapper( function ( handler ) {
+                    return function ( handler ) {
                         setTimeout( handler, 0 )
-                    } )
+                    }
                 }
             }()
 
         function isFunction( fn ) {
             return typeof fn === 'function'
+        }
+
+        function isObject( obj ) {
+            return typeof obj === 'object'
         }
 
         /**
@@ -59,169 +56,187 @@
          * reject 函数的默认值
          */
         function Thrower( e ) {
-            throw new Error( e )
+            return e
         }
 
-        function IsPromise( promise ) {
-            return promise instanceof Promise
+        function isPromise( promise ) {
+            return ( isObject( promise ) || isFunction( promise ) ) && 'state' in promise
         }
 
-        function resolveFn( reason ) {
-            var state = this.__PromiseState__
-            if ( state !== PENDING ) return UNDEFINED
+        function promiseResolution( promise, reactions ) {
+            asyncRunner( function () {
+                var anotherReactions = promise.state === FULLFILLED ? promise.rejectReactions : promise.fullFillReactions
+                while ( reactions.length ) {
+                    var reaction        = reactions.shift(),
+                        anotherReaction = anotherReactions.shift()
 
-            var reactions                    = this.__PromiseFulfillReactions__
-            this.__PromiseFulfillReactions__ = UNDEFINED
-            this.__PromiseState__            = FULLFILLED
-            this.__PromiseResult__           = reason
-
-            asyncWorker( TriggerPromiseReactions.bind( this ), reactions )
-        }
-
-        function rejectFn( reason ) {
-            var state = this.__PromiseState__
-            if ( state !== PENDING ) return UNDEFINED
-
-            var reactions                   = this.__PromiseRejectReactions__
-            this.__PromiseRejectReactions__ = UNDEFINED
-            this.__PromiseState__           = REJECTED
-            this.__PromiseResult__          = reason
-
-            asyncWorker( TriggerPromiseReactions.bind( this ), reactions )
-        }
-
-        function TriggerPromiseReactions( reactions, reason ) {
-            var len = reactions.length,
-                reaction,
-                result,
-                resolveReactions,
-                rejectReactions,
-                i,
-                max
-
-            while ( len-- ) {
-                reaction = reactions.shift()
-                result   = reaction.call( null, this.__PromiseResult__ )
-
-                if ( IsPromise( result ) ) {
-                    resolveReactions = this.__PromiseFulfillReactions__ || reactions || []
-                    rejectReactions  = this.__PromiseRejectReactions__ || reactions || []
-                    max              = Math.max( resolveReactions.length, rejectReactions.length )
-                    for ( i = 0; i < max; i++ ) {
-                        result = result.then( resolveReactions[ i ], rejectReactions[ i ] )
+                    if ( reaction === promise ) {
+                        return promise.reject( new Error( 'Type error!' ) )
                     }
-                    console.log( result )
-                    return result
+
+                    var result
+
+                    try {
+                        result = reaction( promise.result )
+                    } catch ( e ) {
+                        result = e
+                        promise.reject( e )
+                        if ( promise.state === FULLFILLED ) {
+                            anotherReactions.push( anotherReaction )
+                            reactions = anotherReactions
+                        }
+                        promise.state = REJECTED
+                    } finally {
+                        promise.result = result
+                    }
+
+                    //2.3.2
+                    if ( isPromise( result ) ) {
+                        var reactionState  = result.state,
+                            reactionResult = result.result,
+                            oldPromise     = promise
+
+                        promise.isResolved = false
+
+                        if ( reactionState === PENDING ) {
+                            console.log( "TODO pending" )
+                            return result.then( function ( result ) {
+                                return promise.resolve( result )
+                            } ).catch( function ( result ) {
+                                return promise.reject( result )
+                            } )
+                        } else if ( reactionState === FULLFILLED ) {
+                            result.then( function ( result ) {
+                                return oldPromise.resolve( result )
+                            } )
+                        } else {
+                            result.catch( function ( result ) {
+                                return oldPromise.reject( result )
+                            } )
+                        }
+                    } else if ( isObject( result ) || isFunction( result ) ) {
+                        //2.3.3
+                        try {
+                            var then = result.then
+                        } catch ( e ) {
+                            return promise.reject( e )
+                        }
+                    } else {
+                        promise.resolve( result )
+                    }
                 }
-                this.__PromiseResult__ = reason = result
-            }
+            } )
+        }
+
+        function wrapPromise( promise, onFullfilled, onRejected ) {
+            return new Promise( function ( resolve, reject ) {
+                var state = promise.state
+
+                if ( state === PENDING ) {
+                    promise.fullFillReactions.push( onFullfilled, function ( result ) {
+                        resolve( result )
+                        return result
+                    } )
+                    promise.rejectReactions.push( onRejected, function ( result ) {
+                        reject( result )
+                        return result
+                    } )
+                } else {
+                    var resolver = state === FULLFILLED ? onFullfilled : onRejected
+                    try {
+                        var x = resolver( promise.result )
+                    } catch ( e ) {
+                        reject( e )
+                    }
+
+                    if ( isPromise( x ) ) {
+                        x.then( resolve, reject )
+                    } else {
+                        state === FULLFILLED ? resolve( x ) : reject( x )
+                    }
+                }
+            } )
         }
 
         function Promise( executor ) {
-            if ( !isFunction( executor ) ) throw new TypeError( 'Promise constructor takes a function argument.' )
-            if ( !( this instanceof Promise ) ) throw new TypeError( 'Promise cannot be called as a function.' )
+            this.state             = PENDING
+            this.fullFillReactions = []
+            this.rejectReactions   = []
+            this.isResolved        = false
+            this.gid               = gid++
 
-            //https://tc39.github.io/ecma262/#sec-properties-of-promise-instances
-            this.__PromiseState__            = PENDING
-            this.__PromiseIsHandled__        = false
-            this.__PromiseResult__           = UNDEFINED
-            this.__PromiseFulfillReactions__ = []
-            this.__PromiseRejectReactions__  = []
+            this.resolve = function ( x ) {
+                if ( this.isResolved ) {
+                    return
+                }
 
-            this.resolve = resolveFn.bind( this )
-            this.reject  = rejectFn.bind( this )
+                var reactions          = this.fullFillReactions
+                this.isResolved        = true
+                this.state             = FULLFILLED
+                this.result            = x
+                this.fullFillReactions = UNDEFINED
+
+                reactions && reactions.length && promiseResolution( this, reactions, FULLFILLED )
+            }.bind( this )
+
+            this.reject = function ( reason ) {
+                if ( this.isResolved ) {
+                    return
+                }
+
+                var reactions        = this.rejectReactions
+                this.isResolved      = true
+                this.state           = REJECTED
+                this.result          = reason
+                this.rejectReactions = UNDEFINED
+
+                reactions && reactions.length && promiseResolution( this, reactions, REJECTED )
+            }.bind( this )
+
+            promises.push( this )
 
             try {
                 executor.call( null, this.resolve, this.reject )
             } catch ( e ) {
                 this.reject( e )
             }
-
         }
 
         Promise.prototype = {
             constructor: Promise,
 
-            /**
-             * http://people.mozilla.org/~jorendorff/es6-draft.html#sec-promise.prototype.catch
-             */
-            catch: function ( onRejected ) {
-                return this.then( UNDEFINED, onRejected )
+            then: function ( onFullfilled, onRejected ) {
+                var that = this
+
+                !isFunction( onFullfilled ) && ( onFullfilled = Identity )
+                !isFunction( onRejected ) && ( onRejected = Thrower )
+
+                return wrapPromise( that, onFullfilled, onRejected )
             },
 
-            then: function ( onFulfilled, onRejected ) {
-                var state = this.__PromiseState__
-
-                if ( !IsPromise( this ) ) {
-                    throw new TypeError( 'this is not a Promise Object.' )
-                }
-
-                isFunction( onFulfilled ) || ( onFulfilled = Identity )
-                isFunction( onRejected ) || ( onRejected = Thrower )
-
-                if ( state === PENDING ) {
-                    this.__PromiseFulfillReactions__.push( onFulfilled )
-                    this.__PromiseRejectReactions__.push( onRejected )
-                } else if ( state === FULLFILLED ) {
-                    asyncWorker( TriggerPromiseReactions.bind( this ), [ onFulfilled ] )
-                } else {
-                    asyncWorker( TriggerPromiseReactions.bind( this ), [ onRejected ] )
-                }
-                return this
+            catch: function ( onRejected ) {
+                return this.then( UNDEFINED, onRejected )
             }
         }
 
-        Promise.resolve = function () {
-            var args = [].splice.call( arguments, 0 )
+        Promise.resolve = function ( x ) {
             return new Promise( function ( resolve ) {
-                resolve.apply( null, args )
+                resolve( x )
             } )
         }
 
-        Promise.reject = function () {
-            var args = [].splice.call( arguments, 0 )
+        Promise.reject = function ( reason ) {
             return new Promise( function ( _, reject ) {
-                reject.apply( null, args )
+                reject( reason )
             } )
         }
 
-        Promise.all = function ( arr ) {
-            return new Promise( function ( resolve, reject ) {
-                var i     = 0,
-                    len   = arr.length,
-                    count = len
+        Promise.all = function ( iterable ) {
 
-                for ( ; i < len; i++ ) {
-                    arr[ i ].call( null ).then( function ( result ) {
-                        count--
-                        if ( !count ) {
-                            resolve( result )
-                        }
-                    }, reject )
-                }
-            } )
         }
 
-        Promise.race = function ( arr ) {
-            return new Promise( function ( resolve, reject ) {
-                var i   = 0,
-                    len = arr.length
+        Promise.race = function ( iterable ) {
 
-                for ( ; i < len; i++ ) {
-                    arr[ i ].call( null ).then( resolve, reject )
-                }
-            } )
-        }
-
-        Promise.deferred = function () {
-            var deferred = {}
-
-            deferred.promise = new Promise( function ( resolve, reject ) {
-                deferred.resolve = resolve
-                deferred.reject  = reject
-            } )
-
-            return deferred
         }
 
         return Promise
