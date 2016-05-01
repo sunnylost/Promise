@@ -113,7 +113,7 @@
 
                     return EnqueueJob( 'PromiseJobs', PromiseResolveThenableJob, [ promise, resolution, thenAction ] )
                 } catch ( e ) {
-                    return RejectPromise( promise, thenAction )
+                    return RejectPromise( promise, e )
                 }
             },
 
@@ -242,7 +242,7 @@
             thenCallResult
 
         try {
-            thenCallResult = thenable.then( resolvingFunctions.__Resolve__, resolvingFunctions.__Reject__ )
+            thenCallResult = then.call( thenable, resolvingFunctions.__Resolve__, resolvingFunctions.__Reject__ )
         } catch ( e ) {
             return resolvingFunctions.__Reject__( e )
         }
