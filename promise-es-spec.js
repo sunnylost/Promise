@@ -14,12 +14,17 @@
         root.Promise = factory()
     }
 }( this, function () {
-    var FULFILLED   = 'fulfilled',
-        REJECTED    = 'rejected',
-        PENDING     = 'pending',
-        UNDEFINED   = void 0,
+    var FULFILLED     = 'fulfilled',
+        REJECTED      = 'rejected',
+        PENDING       = 'pending',
+        UNDEFINED     = void 0,
+        globalQueues  = {
+            ScriptJobs : [],
+            PromiseJobs: []
+        },
+        isJobPlanning = false,
 
-        asyncRunner = function () {
+        asyncRunner   = function () {
             if ( typeof process != 'undefined' && process.nextTick ) {
                 return function ( handler ) {
                     process.nextTick( handler )
@@ -44,15 +49,7 @@
     }
 
     function IsConstructor( argument ) {
-        if ( !IsObject( argument ) ) {
-            return false
-        }
-
-        if ( argument.constructor ) {
-            return true
-        }
-
-        return false
+        return IsObject( argument ) && !!argument.constructor
     }
 
     /**
@@ -71,15 +68,27 @@
 
     //https://tc39.github.io/ecma262/#sec-ispromise
     function IsPromise( x ) {
-        return IsObject( x ) && x.hasOwnProperty( '__PromiseState__' )
+        return IsObject( x ) && Object.hasOwnProperty.call( x, '__PromiseState__' )
     }
 
     //https://tc39.github.io/ecma262/#sec-enqueuejob
     //TODO: This is a fake implementation
     function EnqueueJob( queueName, job, args ) {
-        asyncRunner( function () {
-            job.apply( UNDEFINED, args )
+        globalQueues[ queueName ].push( {
+            __Job__      : job,
+            __Arguments__: args
         } )
+
+        if ( !isJobPlanning ) {
+            isJobPlanning = true
+            asyncRunner( function () {
+                var job
+                while ( job = globalQueues[ queueName ].shift() ) {
+                    job.__Job__.apply( UNDEFINED, job.__Arguments__ )
+                }
+                isJobPlanning = false
+            } )
+        }
     }
 
     //https://tc39.github.io/ecma262/#sec-createresolvingfunctions
@@ -88,11 +97,11 @@
         var resolve = function ( resolution ) {
                 var promise = resolve.__Promise__
 
-                if ( resolve.__AlreadyResolved__ ) {
+                if ( resolve.__AlreadyResolved__.__Value__ ) {
                     return UNDEFINED
                 }
 
-                resolve.__AlreadyResolved__ = true
+                resolve.__AlreadyResolved__.__Value__ = true
 
                 if ( resolution === promise ) {
                     return RejectPromise( promise, new TypeError( 'resolution cannot be promise itself' ) )
@@ -119,16 +128,18 @@
 
             //https://tc39.github.io/ecma262/#sec-promise-reject-functions
             reject  = function ( reason ) {
-                if ( reject.__AlreadyResolved__ ) {
+                if ( reject.__AlreadyResolved__.__Value__ ) {
                     return UNDEFINED
                 }
 
-                reject.__AlreadyResolved__ = true
+                reject.__AlreadyResolved__.__Value__ = true
                 return RejectPromise( reject.__Promise__, reason )
             }
 
         resolve.__Promise__ = reject.__Promise__ = promise
-        resolve.__AlreadyResolved__ = reject.__AlreadyResolved__ = false
+        resolve.__AlreadyResolved__ = reject.__AlreadyResolved__ = {
+            __Value__: false
+        }
 
         promise.resolve = resolve
         promise.reject  = reject
