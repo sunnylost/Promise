@@ -1,4 +1,4 @@
 Promise
 =======
 
-[Promise Object](http://people.mozilla.org/~jorendorff/es6-draft.html#sec-promise-objects)
+[Promise Object](https://tc39.github.io/ecma262/#sec-promise-objects)
