@@ -40,7 +40,7 @@
     }
 
     function IsObject( obj ) {
-        return typeof obj === 'object' || IsFunction( obj )
+        return obj !== null && typeof obj === 'object' || IsFunction( obj )
     }
 
     function IsConstructor( argument ) {
@@ -71,11 +71,11 @@
 
     //https://tc39.github.io/ecma262/#sec-ispromise
     function IsPromise( x ) {
-        return IsObject( x ) && '__PromiseState__' in x
+        return IsObject( x ) && x.hasOwnProperty( '__PromiseState__' )
     }
 
     //https://tc39.github.io/ecma262/#sec-enqueuejob
-    //TODO: This a fake implementation
+    //TODO: This is a fake implementation
     function EnqueueJob( queueName, job, args ) {
         asyncRunner( function () {
             job.apply( UNDEFINED, args )
@@ -398,8 +398,8 @@
     }
 
     //https://tc39.github.io/ecma262/#sec-promise.resolve
-    Promise.resolve = function ( x ) {
-        var C = this
+    Promise.resolve = Promise.resolved = function ( x ) {
+        var C = Promise
 
         if ( IsPromise( x ) ) {
             var xConstructor = x.constructor
@@ -416,8 +416,8 @@
     }
 
     //https://tc39.github.io/ecma262/#sec-promise.reject
-    Promise.reject = function ( r ) {
-        var C = this
+    Promise.reject = Promise.rejected = function ( r ) {
+        var C = Promise
 
         if ( !IsObject( C ) ) {
             throw new TypeError( '`this` must be an object' )
