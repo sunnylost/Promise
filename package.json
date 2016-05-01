@@ -2,10 +2,10 @@
   "name": "Promise",
   "version": "1.0.0",
   "description": "Promise",
-  "main": "promise.js",
+  "main": "promise-es-spec.js",
   "scripts": {
-    "test": "mocha ./test",
-    "test-full": "promises-aplus-tests promise"
+    "test": "mocha ./test/index",
+    "test-full": "promises-aplus-tests promise-es-spec"
   },
   "repository": {
     "type": "git",
